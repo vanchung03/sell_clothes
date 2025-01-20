@@ -1,5 +1,7 @@
 package com.example.demo.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,8 +30,9 @@ public class User {
     @Column(updatable = false)
     private LocalDate createdAt = LocalDate.now();
     @Column
-    private LocalDate updatedAt = LocalDate.now();  // Gán giá trị mặc định cho trường updatedAt
+    private LocalDate updatedAt = LocalDate.now();
     private int status = 1; // 1: active, 0: inactive, 2: banned
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "User_Roles",
@@ -37,4 +40,5 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles;
+
 }

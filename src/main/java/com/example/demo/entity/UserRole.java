@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,10 +18,12 @@ public class UserRole implements Serializable {
     @Id
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
     @Id
     @ManyToOne
     @JoinColumn(name = "role_id")
+    @JsonIgnore
     private Role role;
 
     @Column(name = "created_at", updatable = false)

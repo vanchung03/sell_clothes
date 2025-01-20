@@ -12,6 +12,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/v1/products")
 public class ProductController {
+
     @Autowired
     private ProductService productService;
 
@@ -31,20 +32,22 @@ public class ProductController {
 
     // Thêm sản phẩm mới
     @PostMapping
-    public ProductDTO createProduct(@RequestBody ProductDTO productDTO) {
-        return productService.createProduct(productDTO);
+    public ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDTO productDTO) {
+        ProductDTO createdProduct = productService.createProduct(productDTO);
+        return ResponseEntity.ok(createdProduct); // Return ProductDTO when the product is successfully created
     }
 
     // Cập nhật sản phẩm
     @PutMapping("/{id}")
-    public ProductDTO updateProduct(@PathVariable Long id, @RequestBody ProductDTO productDTO) {
-        return productService.updateProduct(id, productDTO);
+    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @RequestBody ProductDTO productDTO) {
+        ProductDTO updatedProduct = productService.updateProduct(id, productDTO);
+        return ResponseEntity.ok(updatedProduct); // Return ProductDTO when the product is successfully updated
     }
 
     // Xóa sản phẩm
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Product  deletion was successful");
     }
 }

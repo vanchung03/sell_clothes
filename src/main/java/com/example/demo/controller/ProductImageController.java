@@ -33,9 +33,9 @@ public class ProductImageController {
     }
     // Xóa hình ảnh sản phẩm
     @DeleteMapping("/{imageId}")
-    public ResponseEntity<Void> deleteProductImage(@PathVariable Long imageId) {
+    public ResponseEntity<?> deleteProductImage(@PathVariable Long imageId) {
         productImageService.deleteProductImage(imageId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Product image deletion was successful");
     }
 }
 

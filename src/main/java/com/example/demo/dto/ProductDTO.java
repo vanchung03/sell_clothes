@@ -19,6 +19,6 @@ public class ProductDTO {
     private BigDecimal salePrice;
     private String thumbnail;
     private boolean status;
-    private LocalDate createdAt = LocalDate.now();
-    private LocalDate updatedAt = LocalDate.now();
+    private LocalDate createdAt ;
+    private LocalDate updatedAt ;
 }

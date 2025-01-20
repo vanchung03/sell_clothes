@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ProductImageDTO {
     private Long imageId;
-    private Long productId; // Chỉ lưu ID của sản phẩm thay vì đối tượng Product
+    private Long productId;
     private String imageUrl;
     private boolean isPrimary;
     private int displayOrder;

@@ -31,7 +31,6 @@ public class CategoryService {
                 .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + id));
 
         category.setName(categoryDTO.getName());
-        category.setParentId(categoryDTO.getParentId());
         category.setDescription(categoryDTO.getDescription());
         category.setSlug(categoryDTO.getSlug());
         category.setStatus(categoryDTO.isStatus());

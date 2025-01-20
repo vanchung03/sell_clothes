@@ -35,8 +35,8 @@ public class ProductVariantController {
 
     // Xóa biến thể sản phẩm
     @DeleteMapping("/{variantId}")
-    public ResponseEntity<Void> deleteProductVariant(@PathVariable Long variantId) {
+    public ResponseEntity<?> deleteProductVariant(@PathVariable Long variantId) {
         productVariantService.deleteProductVariant(variantId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Product variant deletion was successful");
     }
 }

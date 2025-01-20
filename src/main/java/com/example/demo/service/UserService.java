@@ -1,63 +1,78 @@
 package com.example.demo.service;
-import com.example.demo.dto.auth.UserRegisterDTO;
+
+
+import com.example.demo.dto.auth.AuthRequest;
+import com.example.demo.dto.auth.AuthResponse;
+import com.example.demo.dto.auth.RegisterRequest;
 import com.example.demo.entity.Role;
+import com.example.demo.entity.RoleName;
 import com.example.demo.entity.User;
-import com.example.demo.entity.UserRole;
-import com.example.demo.mapper.UserMapper;
 import com.example.demo.repository.RoleRepository;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.repository.UserRoleRepository;
-//import jakarta.transaction.Transactional;
-//import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.example.demo.security.JwtUtil;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 @Service
 public class UserService {
-//    private final UserRepository userRepository;
-//    private final RoleRepository roleRepository;
-//    private final UserRoleRepository userRoleRepository;
-//    private final UserMapper userMapper;
-//    private final PasswordEncoder passwordEncoder;
-//
-//    public UserService(UserRepository userRepository, RoleRepository roleRepository,
-//                       UserRoleRepository userRoleRepository, UserMapper userMapper,
-//                       PasswordEncoder passwordEncoder) {
-//        this.userRepository = userRepository;
-//        this.roleRepository = roleRepository;
-//        this.userRoleRepository = userRoleRepository;
-//        this.userMapper = userMapper;
-//        this.passwordEncoder = passwordEncoder;
-//    }
-//
-//    @Transactional
-//    public User registerUser(UserRegisterDTO dto) {
-//        // Chuyển DTO sang User Entity
-//        User user = userMapper.toEntity(dto);
-//
-//        // Mã hóa mật khẩu
-//        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
-//
-//        user.setCreatedAt(LocalDate.now());
-//        user.setUpdatedAt(LocalDate.now());
-//        user.setAvatar(dto.getAvatar());
-//        user.setStatus(1);
-//
-//        // Lưu thông tin người dùng
-//        User savedUser = userRepository.save(user);
-//
-//        // Tìm role mặc định
-//        Role userRole = roleRepository.findByName("ROLE_CUSTOMER")
-//                .orElseThrow(() -> new RuntimeException("Default role ROLE_CUSTOMER not found"));
-//        // Tạo UserRole
-//        UserRole userRoleEntity = UserRole.builder()
-//                .user(savedUser)
-//                .role(userRole)
-//                .createdAt(LocalDateTime.now())
-//                .build();
-//        // Lưu thông tin vào bảng UserRole
-//        userRoleRepository.save(userRoleEntity);
-//        return savedUser;
-//    }
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    public UserService(UserRepository userRepository, RoleRepository roleRepository,
+                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+    }
+
+    public void register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Username is already taken!");
+        }
+
+        Role userRole = roleRepository.findById(2L)
+                .orElseThrow(() -> new RuntimeException("Default role not found!"));
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .phone(request.getPhone())
+                .avatar(request.getAvatar())
+                .roles(Collections.singleton(userRole))
+                .createdAt(LocalDate.now())
+                .updatedAt(LocalDate.now())
+                .status(1).build();
+
+
+        userRepository.save(user);
+    }
+
+    public AuthResponse authenticate(AuthRequest request) {
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Invalid credentials!");
+        }
+
+        String token = jwtUtil.generateToken(user); // Truyền đối tượng `User`
+        return new AuthResponse(token, user);
+    }
+
+
+    // Lấy tất cả người dùng
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 }

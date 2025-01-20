@@ -4,6 +4,7 @@ import com.example.demo.dto.BrandDTO;
 import com.example.demo.service.BrandService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class BrandController {
         return ResponseEntity.ok(brands);
     }
     // Tạo mới Brand
+    @PreAuthorize("hasRole('ROLE_DEALER') or hasRole('ROLE_ADMIN')")
     @PostMapping
     public ResponseEntity<BrandDTO> createBrand(@RequestBody BrandDTO brandDTO) {
         BrandDTO createdBrand = brandService.createBrand(brandDTO);
@@ -37,8 +39,8 @@ public class BrandController {
 
     // Xóa Brand
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBrand(@PathVariable Long id) {
+    public ResponseEntity<?> deleteBrand(@PathVariable Long id) {
         brandService.deleteBrand(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("Brand deletion was successful");
     }
 }
