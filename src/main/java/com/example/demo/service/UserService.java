@@ -1,61 +1,47 @@
 package com.example.demo.service;
 
-
 import com.example.demo.dto.auth.AuthRequest;
 import com.example.demo.dto.auth.AuthResponse;
+import com.example.demo.dto.auth.ChangePasswordRequest;
 import com.example.demo.dto.auth.RegisterRequest;
-import com.example.demo.entity.Role;
-import com.example.demo.entity.RoleName;
+import com.example.demo.entity.Otp;
 import com.example.demo.entity.User;
-import com.example.demo.repository.RoleRepository;
+import com.example.demo.repository.OtpRepository;
 import com.example.demo.repository.UserRepository;
-
-import com.example.demo.security.JwtUtil;
+import com.example.demo.security.JwtUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.Collections;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
-
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final JwtUtils jwtUtil;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtil) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+
     }
-
     public void register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username is already taken!");
-        }
-
-        Role userRole = roleRepository.findById(2L)
-                .orElseThrow(() -> new RuntimeException("Default role not found!"));
-
-        User user = User.builder()
+        User user = User.builder()  // Sử dụng builder
                 .username(request.getUsername())
                 .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .phone(request.getPhone())
                 .avatar(request.getAvatar())
-                .roles(Collections.singleton(userRole))
-                .createdAt(LocalDate.now())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))  // Mã hóa mật khẩu
+                .phone(request.getPhone())
                 .updatedAt(LocalDate.now())
-                .status(1).build();
+                .createdAt(LocalDate.now())
+                .status(1).build();  // Tạo đối tượng User
 
-
-        userRepository.save(user);
+        userRepository.save(user);  // Lưu đối tượng User vào cơ sở dữ liệu
     }
 
     public AuthResponse authenticate(AuthRequest request) {
@@ -66,13 +52,26 @@ public class UserService {
             throw new RuntimeException("Invalid credentials!");
         }
 
-        String token = jwtUtil.generateToken(user); // Truyền đối tượng `User`
-        return new AuthResponse(token, user);
+        String token = jwtUtil.generateToken(user.getUsername(), user.getEmail(), user.getRoles().stream().map(role -> role.getName().name()).toList(), user.getStatus());
+
+        return new AuthResponse(token, user.getRoles().stream().map(role -> role.getName().name()).toList(), user.getStatus());
+    }
+    // Thêm phương thức để lấy tất cả người dùng
+    public List<User> getAllUsers() {
+        return userRepository.findAll();  // Trả về danh sách tất cả người dùng
     }
 
-
-    // Lấy tất cả người dùng
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    // Đổi mật khẩu
+    public void changePassword(String username, ChangePasswordRequest changePasswordRequest) {
+        // Lấy user
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        // Kiểm tra mật khẩu cũ
+        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
+        // Cập nhật mật khẩu mới
+        user.setPasswordHash(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        userRepository.save(user);
     }
 }

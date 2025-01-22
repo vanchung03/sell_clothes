@@ -17,13 +17,14 @@ public class BrandController {
     private BrandService brandService;
 
     // Lấy danh sách Brand
+
     @GetMapping
+
     public ResponseEntity<List<BrandDTO>> getAllBrands() {
         List<BrandDTO> brands = brandService.getAllBrands();
         return ResponseEntity.ok(brands);
     }
     // Tạo mới Brand
-    @PreAuthorize("hasRole('ROLE_DEALER') or hasRole('ROLE_ADMIN')")
     @PostMapping
     public ResponseEntity<BrandDTO> createBrand(@RequestBody BrandDTO brandDTO) {
         BrandDTO createdBrand = brandService.createBrand(brandDTO);

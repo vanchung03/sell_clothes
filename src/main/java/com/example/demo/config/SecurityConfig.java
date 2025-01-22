@@ -1,19 +1,47 @@
 package com.example.demo.config;
 
-import com.example.demo.entity.RoleName;
-import com.example.demo.service.CustomUserDetailsService;
+import com.example.demo.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 @Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    @Autowired
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf().disable()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/products").hasRole("DEALER")
+                        .requestMatchers("/api/v1/brands").hasRole("USER")
+                        .anyRequest().authenticated()
+                )
+                // Cấu hình xử lý lỗi cho trường hợp không có quyền truy cập
+                .exceptionHandling()
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.FORBIDDEN))  // Mã lỗi 403 khi không có quyền truy cập
+                .and()
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -21,44 +49,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authManager(HttpSecurity httpSecurity, CustomUserDetailsService userDetailsService) throws Exception {
-        return httpSecurity.getSharedObject(AuthenticationManagerBuilder.class)
-                .userDetailsService(userDetailsService)
-                .passwordEncoder(passwordEncoder())
-                .and()
-                .build();
-    }
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf().disable()
-                .authorizeRequests()
-                .requestMatchers("/api/auth/**").permitAll()
-
-                .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/v1/products").hasRole("USER")
-                .requestMatchers(
-                        HttpMethod.PUT,
-                        "/api/v1/products/{id}")
-                .hasRole("DEALER")
-
-                .requestMatchers(
-                        HttpMethod.DELETE,
-                        "/api/v1/products/{id}")
-                .hasRole("DEALER")
-
-
-                .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/v1/products",
-                        "/api/v1/brands",
-                        "/api/v1/categories",
-                        "/api/v1/product_images/**",
-                        "/api/v1/product_variants/**",
-                        "/api/v1/products/**"
-                ).permitAll();
-//                .anyRequest().permitAll();
-
-        return httpSecurity.build();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }
