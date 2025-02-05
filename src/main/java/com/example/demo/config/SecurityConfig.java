@@ -31,8 +31,10 @@ public class SecurityConfig {
                 .csrf().disable()
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/v1/products").hasRole("DEALER")
-                        .requestMatchers("/api/v1/brands").hasRole("USER")
+                        .requestMatchers(ApiPermissions.SHARED_APIS).hasAnyRole("ADMIN", "DEALER", "USER")
+                        .requestMatchers(ApiPermissions.ADMIN_APIS).hasRole("ADMIN")
+                        .requestMatchers(ApiPermissions.DEALER_APIS).hasRole("DEALER")
+                        .requestMatchers(ApiPermissions.USER_APIS).hasRole("USER")
                         .anyRequest().authenticated()
                 )
                 // Cấu hình xử lý lỗi cho trường hợp không có quyền truy cập
@@ -42,7 +44,6 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

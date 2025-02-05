@@ -2,6 +2,7 @@ package com.example.demo.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -21,6 +22,7 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
+    @Pattern(regexp = "^0\\d{9}$", message = "Invalid phone number")
     private String phone;
     private String avatar;
     private int status = 1 ;
