@@ -69,11 +69,6 @@ public class AuthController {
                 throw new RuntimeException("Invalid credentials");
             }
     }
-
-    @GetMapping("all")
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();  // Lấy tất cả người dùng
-    }
     // Đổi mật khẩu
     @PostMapping("/change_password/rs")
     public String changePassword(@RequestHeader("Authorization") String token,
