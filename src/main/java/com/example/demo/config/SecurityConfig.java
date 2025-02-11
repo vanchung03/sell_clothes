@@ -15,6 +15,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
@@ -35,21 +36,23 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép các request OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // Các endpoint không cần xác thực
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(ApiPermissions.SHARED_APIS).hasAnyRole("ADMIN", "DEALER", "USER")
+                        // Cho phép tất cả người dùng truy cập vào các API chia sẻ
+                        .requestMatchers(HttpMethod.GET, ApiPermissions.SHARED_APIS).permitAll()
+                        .requestMatchers("/api/auth/**").permitAll() // Các API authentication công khai
+                        .requestMatchers(ApiPermissions.SHARED_APIS).hasAnyRole("ADMIN", "USER")
                         .requestMatchers(ApiPermissions.ADMIN_APIS).hasRole("ADMIN")
-                        .requestMatchers(ApiPermissions.DEALER_APIS).hasRole("DEALER")
                         .requestMatchers(ApiPermissions.USER_APIS).hasRole("USER")
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated() // Các request khác yêu cầu người dùng đã đăng nhập
                 )
                 // Cấu hình xử lý lỗi cho trường hợp không có quyền truy cập
                 .exceptionHandling()
-                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.FORBIDDEN))  // Mã lỗi 403 khi không có quyền truy cập
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))  // Mã lỗi 401 khi không xác thực
+                .accessDeniedHandler(new AccessDeniedHandlerImpl())  // Mã lỗi 403 khi không có quyền truy cập
                 .and()
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

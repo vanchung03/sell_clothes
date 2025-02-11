@@ -2,17 +2,22 @@ package com.example.demo.controller.auth;
 
 import com.example.demo.dto.auth.*;
 import com.example.demo.entity.Otp;
+import com.example.demo.entity.RefreshToken;
 import com.example.demo.entity.User;
 import com.example.demo.enums.RoleName;
 import com.example.demo.repository.OtpRepository;
+import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.RoleRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtils;
 import com.example.demo.service.OtpService;
 import com.example.demo.service.UserService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +25,11 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-@CrossOrigin(origins = "http://localhost:4200")  // Cấu hình cho phép frontend ở localhost:4200 truy cập
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
+  // Cấu hình cho phép frontend ở localhost:4200 truy cập
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -41,6 +48,8 @@ public class AuthController {
     private OtpService otpService;
     @Autowired
     private OtpRepository otpRepository;
+    @Autowired
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
@@ -58,17 +67,77 @@ public class AuthController {
             ));
         }
     }
-    @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody AuthRequest request) {
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-            if (passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-                String token = jwtUtils.generateToken(user.getUsername(), user.getEmail(), user.getRoles().stream().map(role -> role.getName().name()).toList(), user.getStatus());
-                return new AuthResponse(token, user.getRoles().stream().map(role -> role.getName().name()).toList(), user.getStatus());
-            } else {
-                throw new RuntimeException("Invalid credentials");
+    @GetMapping("/check-cookie")
+    public ResponseEntity<String> checkCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals("refreshToken")) {
+                    return ResponseEntity.ok("Cookie refreshToken: " + cookie.getValue());
+                }
             }
+        }
+        return ResponseEntity.ok("No refreshToken cookie found.");
     }
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest request) {
+        return userService.authenticate(request);
+    }
+//     Refresh endpoint: lấy refresh token từ cookie (HTTP-only)
+//    @PostMapping("/refresh2")
+//    public ResponseEntity<?> refresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+//        if (refreshToken == null) {
+//            return ResponseEntity.badRequest().body(Map.of("error", "Refresh token is missing"));
+//        }
+//        Optional<RefreshToken> tokenEntity = refreshTokenRepository.findByToken(refreshToken);
+//        if (tokenEntity.isPresent()) {
+//            User user = tokenEntity.get().getUser();
+//            String newAccessToken = jwtUtils.generateAccessToken(user.getUsername(), user.getEmail(),
+//                    user.getRoles().stream().map(role -> role.getName().name()).toList(),
+//                    String.valueOf(user.getStatus()));
+//            return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+//        } else {
+//            return ResponseEntity.badRequest().body(Map.of("error", "Invalid refresh token"));
+//        }
+//    }
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> requestBody) {
+        String refreshToken = requestBody.get("refreshToken");
+
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Refresh token is missing"));
+        }
+
+        Optional<RefreshToken> tokenEntity = refreshTokenRepository.findByToken(refreshToken);
+
+        if (tokenEntity.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid refresh token"));
+        }
+
+        RefreshToken refreshTokenObj = tokenEntity.get();
+
+        // Kiểm tra refresh token có hợp lệ không
+        if (!jwtUtils.validateToken(refreshToken)) {
+            refreshTokenRepository.delete(refreshTokenObj);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Refresh token expired or invalid"));
+        }
+
+        User user = refreshTokenObj.getUser();
+        String newAccessToken = jwtUtils.generateAccessToken(
+                user.getUsername(),
+                user.getEmail(),
+                user.getRoles().stream().map(role -> role.getName().name()).toList(),
+                String.valueOf(user.getStatus())
+        );
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+    }
+
+
+
     // Đổi mật khẩu
     @PostMapping("/change_password/rs")
     public String changePassword(@RequestHeader("Authorization") String token,
@@ -91,6 +160,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }
+
     @PutMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> requestBody) {
         String email = requestBody.get("email");
@@ -137,5 +207,4 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Lỗi khi thay đổi mật khẩu."));
         }
     }
-
 }

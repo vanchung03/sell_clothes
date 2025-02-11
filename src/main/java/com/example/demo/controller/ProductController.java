@@ -3,10 +3,13 @@ package com.example.demo.controller;
 import com.example.demo.dto.ProductDTO;
 import com.example.demo.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
@@ -44,10 +47,21 @@ public class ProductController {
         return ResponseEntity.ok(updatedProduct); // Return ProductDTO when the product is successfully updated
     }
 
-    // Xóa sản phẩm
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
-        return ResponseEntity.ok("Product  deletion was successful");
+    public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Long id) {
+        Map<String, String> response = new HashMap<>();
+
+        boolean isDeleted = productService.deleteProduct(id); // Giả sử phương thức này trả về boolean
+
+        if (isDeleted) {
+            response.put("status", "success");
+            response.put("message", "Product deletion was successful");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status", "error");
+            response.put("message", "Product deletion failed: Product not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
+
 }

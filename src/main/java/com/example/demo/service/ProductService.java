@@ -76,7 +76,8 @@ public class ProductService {
     }
 
     // Xóa sản phẩm
-    public void deleteProduct(Long id) {
+    public boolean deleteProduct(Long id) {
         productRepository.deleteById(id);
+        return false;
     }
 }
