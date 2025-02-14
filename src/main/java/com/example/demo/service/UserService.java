@@ -1,43 +1,39 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.auth.AuthRequest;
-import com.example.demo.dto.auth.AuthResponse;
-import com.example.demo.dto.auth.ChangePasswordRequest;
+import com.example.demo.dto.UserDTO;
 import com.example.demo.dto.auth.RegisterRequest;
-import com.example.demo.entity.RefreshToken;
 import com.example.demo.entity.User;
 import com.example.demo.enums.RoleName;
+import com.example.demo.mapper.UserMapper;
 import com.example.demo.repository.RoleRepository;
-import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.security.JwtUtils;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
 @Service
 public class UserService {
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtil;
-    private final RoleRepository roleRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtil, RoleRepository roleRepository, RefreshTokenRepository refreshTokenRepository) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtUtil = jwtUtil;
-        this.roleRepository = roleRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private  PasswordEncoder passwordEncoder;
+    @Autowired
+    private  RoleRepository roleRepository;
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+
+    }
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
     }
 
     // Register a new user
@@ -64,72 +60,40 @@ public class UserService {
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
                 .phone(request.getPhone())
-                .roles(Set.of(roleRepository.findByName(RoleName.ROLE_USER).orElseThrow()))
+                .roles(Set.of(roleRepository.findByName(RoleName.ROLE_ADMIN).orElseThrow()))
                 .status(1)
                 .build();
         return userRepository.save(user);
     }
 
-    // Authenticate user, generate tokens, and set refresh token in cookie
-    public ResponseEntity<?> authenticate(@Valid AuthRequest request) {
-        // Tìm người dùng từ cơ sở dữ liệu
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        return userRepository.findById(id).map(user -> {
+            // Cập nhật các trường thông tin nếu có
+            if (userDTO.getEmail() != null) user.setEmail(userDTO.getEmail());
+            if (userDTO.getFullName() != null) user.setFullName(userDTO.getFullName());
+            if (userDTO.getPhone() != null) user.setPhone(userDTO.getPhone());
+            if (userDTO.getAvatar() != null) user.setAvatar(userDTO.getAvatar());
 
-        // Kiểm tra mật khẩu
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Tên đăng nhập hoặc mật khẩu không đúng"));
-        }
+            // Kiểm tra nếu mật khẩu mới khác mật khẩu cũ thì mới cập nhật
+            if (userDTO.getPasswordHash() != null && !userDTO.getPasswordHash().isEmpty()) {
+                if (!passwordEncoder.matches(userDTO.getPasswordHash(), user.getPasswordHash())) {
+                    user.setPasswordHash(passwordEncoder.encode(userDTO.getPasswordHash())); // Mã hóa và cập nhật
+                }
+            }
 
-        // Tạo danh sách quyền của người dùng
-        List<String> roles = user.getRoles().stream().map(role -> role.getName().name()).toList();
+            // Cập nhật thời gian sửa đổi
+            user.setUpdatedAt(LocalDate.now());
 
-        // Tạo Access Token và Refresh Token
-        String accessToken = jwtUtil.generateAccessToken(user.getUsername(), user.getEmail(), roles, String.valueOf(user.getStatus()));
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
-
-        // Kiểm tra xem refresh token đã tồn tại trong DB chưa
-        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
-        if (existingToken.isPresent()) {
-            RefreshToken tokenEntity = existingToken.get();
-            tokenEntity.setToken(refreshToken);
-            refreshTokenRepository.save(tokenEntity);
-        } else {
-            RefreshToken tokenEntity = new RefreshToken(null, refreshToken, user);
-            refreshTokenRepository.save(tokenEntity);
-        }
-
-        // Tạo cookie để lưu refresh token (HTTP-only – chỉ được set bởi server)
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(false)
-                .secure(false)
-                .path("/")
-                .maxAge(86400000)       // 1 ngày
-                .sameSite("Lax")   // Điều chỉnh nếu cần
-                .build();
-
-        // Trả về response với header Set-Cookie và body chứa access token
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new AuthResponse(accessToken, refreshToken));
+            // Lưu và trả về DTO
+            return userMapper.toDTo(userRepository.saveAndFlush(user));
+        }).orElse(null); // Trả về null nếu không tìm thấy người dùng
     }
 
-    // Đổi mật khẩu
-    public void changePassword(String username, ChangePasswordRequest changePasswordRequest) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Old password is incorrect");
+    public boolean deleteUser(Long id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            return true;
         }
-        user.setPasswordHash(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
-        userRepository.save(user);
+        return false;
     }
-    // Thêm phương thức để lấy tất cả người dùng
-    public List<User> getAllUsers() {
-        return userRepository.findAll();  // Trả về danh sách tất cả người dùng
-    }
-
 }
-
-
-

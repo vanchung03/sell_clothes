@@ -8,7 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
+@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
+// Cấu hình cho phép frontend ở localhost:4200 truy cập
 @RestController
 @RequestMapping("/api/v1/brands")
 public class BrandController {

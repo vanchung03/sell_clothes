@@ -1,17 +1,15 @@
 package com.example.demo.controller.auth;
 
 import com.example.demo.dto.auth.*;
-import com.example.demo.entity.Otp;
 import com.example.demo.entity.RefreshToken;
 import com.example.demo.entity.User;
-import com.example.demo.enums.RoleName;
 import com.example.demo.repository.OtpRepository;
 import com.example.demo.repository.RefreshTokenRepository;
 import com.example.demo.repository.RoleRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtils;
 import com.example.demo.service.OtpService;
-import com.example.demo.service.UserService;
+import com.example.demo.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -22,11 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 @CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
   // Cấu hình cho phép frontend ở localhost:4200 truy cập
@@ -35,7 +30,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AuthController {
     @Autowired
-    private UserService userService;
+    private AuthService authService;
     @Autowired
     private final UserRepository userRepository;
     @Autowired
@@ -54,7 +49,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
         try {
-            User newUser = userService.register(registerRequest);
+            User newUser = authService.register(registerRequest);
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Đăng ký thành công!",
@@ -81,7 +76,7 @@ public class AuthController {
     }
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest request) {
-        return userService.authenticate(request);
+        return authService.authenticate(request);
     }
 //     Refresh endpoint: lấy refresh token từ cookie (HTTP-only)
 //    @PostMapping("/refresh2")
@@ -115,7 +110,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid refresh token"));
         }
-
         RefreshToken refreshTokenObj = tokenEntity.get();
 
         // Kiểm tra refresh token có hợp lệ không
@@ -130,7 +124,8 @@ public class AuthController {
                 user.getUsername(),
                 user.getEmail(),
                 user.getRoles().stream().map(role -> role.getName().name()).toList(),
-                String.valueOf(user.getStatus())
+                String.valueOf(user.getStatus()),
+                String.valueOf(user.getUserId())
         );
 
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
@@ -145,7 +140,7 @@ public class AuthController {
         // Lấy user từ token
         String username = jwtUtils.getUserFromToken(token);
         // Thực hiện thay đổi mật khẩu
-        userService.changePassword(username, changePasswordRequest);
+        authService.changePassword(username, changePasswordRequest);
         return "Password changed successfully";
     }
 

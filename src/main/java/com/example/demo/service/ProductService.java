@@ -1,4 +1,3 @@
-// ProductService.java
 package com.example.demo.service;
 
 import com.example.demo.dto.ProductDTO;
@@ -12,7 +11,9 @@ import com.example.demo.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -32,18 +33,23 @@ public class ProductService {
     @Autowired
     private ProductMapper productMapper;
 
+    @Autowired
+    private CloudinaryService cloudinaryService; // Gọi CloudinaryService thay vì Cloudinary trực tiếp
+
     // Lấy tất cả sản phẩm
     public List<ProductDTO> getAllProducts() {
         List<Product> products = productRepository.findAll();
         return products.stream().map(productMapper::toDTO).collect(Collectors.toList());
     }
+
     // Lấy sản phẩm theo ID
     public Optional<ProductDTO> getByIdProducts(Long id) {
         Optional<Product> product = productRepository.findById(id);
         return product.map(productMapper::toDTO);
     }
+
     // Thêm sản phẩm mới
-    public ProductDTO createProduct(ProductDTO productDTO) {
+    public ProductDTO createProduct(ProductDTO productDTO, MultipartFile file) throws IOException {
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
         Brand brand = brandRepository.findById(productDTO.getBrandId())
@@ -52,7 +58,13 @@ public class ProductService {
         Product product = productMapper.toEntity(productDTO);
         product.setCategory(category);
         product.setBrand(brand);
-        // Gán giá trị cho createdAt và updatedAt
+
+        // Upload ảnh lên Cloudinary thông qua CloudinaryService
+        if (file != null && !file.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadFile(file, "products", "prod_");
+            product.setThumbnail(imageUrl);
+        }
+
         product.setCreatedAt(LocalDate.now());
         product.setUpdatedAt(LocalDate.now());
         Product savedProduct = productRepository.save(product);
@@ -60,7 +72,7 @@ public class ProductService {
     }
 
     // Cập nhật sản phẩm
-    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO) {
+    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO, MultipartFile file) throws IOException {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -68,8 +80,14 @@ public class ProductService {
         existingProduct.setDescription(updatedProductDTO.getDescription());
         existingProduct.setPrice(updatedProductDTO.getPrice());
         existingProduct.setSalePrice(updatedProductDTO.getSalePrice());
-        existingProduct.setThumbnail(updatedProductDTO.getThumbnail());
         existingProduct.setStatus(updatedProductDTO.isStatus());
+
+        // Nếu có ảnh mới, upload ảnh qua CloudinaryService
+        if (file != null && !file.isEmpty()) {
+            String imageUrl = cloudinaryService.uploadFile(file, "products", "prod_");
+            existingProduct.setThumbnail(imageUrl);
+        }
+
         existingProduct.setUpdatedAt(LocalDate.now());
         Product updatedProduct = productRepository.save(existingProduct);
         return productMapper.toDTO(updatedProduct);
@@ -78,6 +96,6 @@ public class ProductService {
     // Xóa sản phẩm
     public boolean deleteProduct(Long id) {
         productRepository.deleteById(id);
-        return false;
+        return true;
     }
 }
