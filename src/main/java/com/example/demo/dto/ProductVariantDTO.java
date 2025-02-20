@@ -13,11 +13,11 @@ import java.math.BigDecimal;
 @Builder
 public class ProductVariantDTO {
     private Long variantId;
-    private Long productId; // Chỉ lưu ID của sản phẩm
+    private Long productId;
     private String size;
     private String color;
     private String sku;
-    private BigDecimal price;
+    private double price;
     private int stockQuantity;
     private String imageUrl;
     private boolean status;

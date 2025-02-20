@@ -36,13 +36,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép các request OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // Cho phép tất cả người dùng truy cập vào các API chia sẻ
+
                         .requestMatchers(HttpMethod.GET, ApiPermissions.SHARED_APIS).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll() // Các API authentication công khai
-                        .requestMatchers(ApiPermissions.SHARED_APIS).hasAnyRole("ADMIN", "USER")
+                        .requestMatchers(ApiPermissions.SHARED_APIS).permitAll()
+                        .requestMatchers(ApiPermissions.USER_APIS).hasAnyRole("ADMIN", "USER")
                         .requestMatchers(ApiPermissions.ADMIN_APIS).hasRole("ADMIN")
                         .requestMatchers(ApiPermissions.USER_APIS).hasRole("USER")
-                        .anyRequest().authenticated() // Các request khác yêu cầu người dùng đã đăng nhập
+                        .anyRequest().authenticated()
                 )
                 // Cấu hình xử lý lỗi cho trường hợp không có quyền truy cập
                 .exceptionHandling()

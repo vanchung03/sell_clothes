@@ -27,7 +27,7 @@ public class ProductVariant {
     private String size;
     private String color;
     private String sku;
-    private BigDecimal price;
+    private double price;
     private int stockQuantity;
     private String imageUrl;
     private boolean status;

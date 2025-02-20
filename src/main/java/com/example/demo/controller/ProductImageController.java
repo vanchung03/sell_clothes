@@ -20,7 +20,6 @@ public class ProductImageController {
     public List<ProductImageDTO> getAllProductImages(@PathVariable Long productId) {
         return productImageService.getAllProductImages(productId);
     }
-
     // Thêm mới hình ảnh sản phẩm
     @PostMapping
     public ProductImageDTO createProductImage(@RequestBody ProductImageDTO productImageDTO) {

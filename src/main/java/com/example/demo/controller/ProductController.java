@@ -36,13 +36,11 @@ public class ProductController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Thêm sản phẩm mới (hỗ trợ upload ảnh)
-    @PostMapping
-    public ResponseEntity<ProductDTO> createProduct(
-            @RequestPart("product") ProductDTO productDTO,
-            @RequestPart(value = "file", required = false) MultipartFile file) throws IOException {
 
-        ProductDTO createdProduct = productService.createProduct(productDTO, file);
+    @PostMapping
+    public ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDTO productDTO) {
+
+        ProductDTO createdProduct = productService.createProduct(productDTO);
         return ResponseEntity.ok(createdProduct);
     }
 
@@ -50,10 +48,9 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductDTO> updateProduct(
             @PathVariable Long id,
-            @RequestPart("product") ProductDTO productDTO,
-            @RequestPart(value = "file", required = false) MultipartFile file) throws IOException {
+            @RequestBody ProductDTO productDTO){
 
-        ProductDTO updatedProduct = productService.updateProduct(id, productDTO, file);
+        ProductDTO updatedProduct = productService.updateProduct(id, productDTO);
         return ResponseEntity.ok(updatedProduct);
     }
 

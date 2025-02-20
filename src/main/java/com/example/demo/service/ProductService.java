@@ -49,22 +49,14 @@ public class ProductService {
     }
 
     // Thêm sản phẩm mới
-    public ProductDTO createProduct(ProductDTO productDTO, MultipartFile file) throws IOException {
+    public ProductDTO createProduct(ProductDTO productDTO) {
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
         Brand brand = brandRepository.findById(productDTO.getBrandId())
                 .orElseThrow(() -> new EntityNotFoundException("Brand not found"));
-
         Product product = productMapper.toEntity(productDTO);
         product.setCategory(category);
         product.setBrand(brand);
-
-        // Upload ảnh lên Cloudinary thông qua CloudinaryService
-        if (file != null && !file.isEmpty()) {
-            String imageUrl = cloudinaryService.uploadFile(file, "products", "prod_");
-            product.setThumbnail(imageUrl);
-        }
-
         product.setCreatedAt(LocalDate.now());
         product.setUpdatedAt(LocalDate.now());
         Product savedProduct = productRepository.save(product);
@@ -72,7 +64,7 @@ public class ProductService {
     }
 
     // Cập nhật sản phẩm
-    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO, MultipartFile file) throws IOException {
+    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO) {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -81,13 +73,7 @@ public class ProductService {
         existingProduct.setPrice(updatedProductDTO.getPrice());
         existingProduct.setSalePrice(updatedProductDTO.getSalePrice());
         existingProduct.setStatus(updatedProductDTO.isStatus());
-
-        // Nếu có ảnh mới, upload ảnh qua CloudinaryService
-        if (file != null && !file.isEmpty()) {
-            String imageUrl = cloudinaryService.uploadFile(file, "products", "prod_");
-            existingProduct.setThumbnail(imageUrl);
-        }
-
+        existingProduct.setThumbnail(updatedProductDTO.getThumbnail());
         existingProduct.setUpdatedAt(LocalDate.now());
         Product updatedProduct = productRepository.save(existingProduct);
         return productMapper.toDTO(updatedProduct);

@@ -1,30 +1,29 @@
 package com.example.demo.config;
 
 public class ApiPermissions {
-
-    // API dùng chung cho tất cả vai trò
     public static final String[] SHARED_APIS = {
+            "/api/auth/**",
             "/api/v1/brands/**",
             "/api/v1/categories/**",
             "/api/v1/products/**",
-            "/api/v1/orders/**",
-            "/api/v1/payments/**",
-            "/api/v1/product-images/**"
+            "/api/v1/product_images/**",
+            "/api/v1/product_variants/**"
     };
-
-    // API riêng cho ADMIN
     public static final String[] ADMIN_APIS = {
-            "/api/v1/users/**",          // Quản lý người dùng
-            "/api/v1/roles/**",          // Quản lý vai trò
+            "/api/v1/roles/**",
             "/api/v1/products/**",
-            "/api/v1/orders/**",         // Toàn quyền với đơn hàng
-            "/api/v1/payments/**",       // Toàn quyền với thanh toán
-            "/api/v1/payment-history/**" // Lịch sử thanh toán
+            "/api/v1/orders/**",
+            "/api/cloudinary",
     };
-    // API riêng cho USER
     public static final String[] USER_APIS = {
-            "/api/v1/user-addresses/**", // Quản lý địa chỉ của chính họ
-            "/api/v1/orders/**",         // Quản lý đơn hàng cá nhân
-            "/api/v1/payments/**"        // Xem thanh toán của chính họ
+            "/api/v1/user-addresses/**",
+            "/api/v1/orders/**",
+            "/api/v1/payment-methods/**",
+            "/api/v1/users/**",
+            "/api/v1/payment-history/**",
+            "/api/v1/user-addresses/**",
+            "/api/v1/cart/**",
+            "/api/v1/orders/**",
+            "/api/v1/payments/**"
     };
 }
