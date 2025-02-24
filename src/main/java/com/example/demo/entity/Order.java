@@ -1,12 +1,14 @@
 package com.example.demo.entity;
 
 import com.example.demo.enums.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -26,10 +28,9 @@ public class Order {
     @JoinColumn(name = "address_id", nullable = true)
     private UserAddress address;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference // ✅ Đánh dấu quan hệ cha
-    private List<OrderItem> orderItems;  // ✅ Đảm bảo không null khi ánh xạ
-
+    @JsonManagedReference  // ✅ Đảm bảo không bị lỗi tuần hoàn
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<OrderItem> orderItems = new ArrayList<>();
     private Double totalAmount;
     private Double shippingFee;
 

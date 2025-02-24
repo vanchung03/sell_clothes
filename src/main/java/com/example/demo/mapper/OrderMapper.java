@@ -16,7 +16,7 @@ public interface OrderMapper {
 
     @Mapping(source = "user.userId", target = "userId")
     @Mapping(source = "address.addressId", target = "addressId")
-    @Mapping(source = "orderItems", target = "orderItems")
+//    @Mapping(source = "orderItems", target = "orderItems")
     OrderDTO toDTO(Order entity);
 
     Order toEntity(OrderDTO dto);

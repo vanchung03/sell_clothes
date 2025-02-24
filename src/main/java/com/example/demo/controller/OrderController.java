@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.OrderDTO;
+import com.example.demo.entity.Order;
 import com.example.demo.enums.OrderStatus;
 import com.example.demo.service.OrderService;
 import org.springframework.http.ResponseEntity;
@@ -38,9 +39,14 @@ public class OrderController {
     // ✅ 4. Cập nhật trạng thái đơn hàng
     @PutMapping("/{orderId}/status")
     public ResponseEntity<OrderDTO> updateOrderStatus(@PathVariable Long orderId, @RequestParam String status) {
-        OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
-        return ResponseEntity.ok(orderService.updateOrderStatus(orderId, orderStatus));
+        try {
+            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase()); // ✅ Chuyển chuỗi sang Enum
+            return ResponseEntity.ok(orderService.updateOrderStatus(orderId, orderStatus));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null); // ✅ Xử lý lỗi nếu status không hợp lệ
+        }
     }
+
 
     // ✅ 5. Xóa đơn hàng
     @DeleteMapping("/{orderId}")
@@ -48,4 +54,11 @@ public class OrderController {
         orderService.deleteOrder(orderId);
         return ResponseEntity.ok("Đã xóa đơn hàng thành công!");
     }
+//     ✅ 6. Lấy tất cả đơn hàng
+    @GetMapping
+    public ResponseEntity<List<OrderDTO>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrders());
+    }
+    // ✅ API lấy danh sách đơn hàng
+
 }

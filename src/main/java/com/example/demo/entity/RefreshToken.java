@@ -2,12 +2,13 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+@Data
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "refresh_token")
 public class RefreshToken {
 
     @Id
@@ -19,5 +20,4 @@ public class RefreshToken {
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "userId", nullable = false)
     private User user;
-
 }

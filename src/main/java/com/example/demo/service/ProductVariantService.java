@@ -29,6 +29,12 @@ public class ProductVariantService {
                 .map(productVariantMapper::toDTO)
                 .toList();
     }
+    // ✅ Lấy thông tin chi tiết của một biến thể sản phẩm theo variantId
+    public ProductVariantDTO getVariantById(Long variantId) {
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new RuntimeException("Product variant not found"));
+        return productVariantMapper.toDTO(variant);
+    }
 
     // Thêm mới biến thể sản phẩm
     public ProductVariantDTO createProductVariant(ProductVariantDTO productVariantDTO) {

@@ -20,6 +20,11 @@ public class ProductVariantController {
     public List<ProductVariantDTO> getAllVariantsByProductId(@PathVariable Long productId) {
         return productVariantService.getAllVariantsByProductId(productId);
     }
+    // ✅ Lấy thông tin chi tiết của một biến thể sản phẩm theo variantId
+    @GetMapping("/variant/{variantId}")
+    public ResponseEntity<ProductVariantDTO> getVariantById(@PathVariable Long variantId) {
+        return ResponseEntity.ok(productVariantService.getVariantById(variantId));
+    }
 
     // Thêm mới biến thể sản phẩm
     @PostMapping

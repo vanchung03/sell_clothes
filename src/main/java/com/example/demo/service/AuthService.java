@@ -63,7 +63,7 @@ public class AuthService {
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
                 .phone(request.getPhone())
-                .roles(Set.of(roleRepository.findByName(RoleName.ROLE_ADMIN).orElseThrow()))
+                .roles(Set.of(roleRepository.findByName(RoleName.ROLE_USER).orElseThrow()))
                 .status(1)
                 .build();
         return userRepository.save(user);

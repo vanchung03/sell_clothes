@@ -37,7 +37,7 @@ public class SecurityConfig {
                         // Cho phép các request OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, ApiPermissions.SHARED_APIS).permitAll()
+                        .requestMatchers(ApiPermissions.SHARED_APIS).permitAll()
                         .requestMatchers(ApiPermissions.SHARED_APIS).permitAll()
                         .requestMatchers(ApiPermissions.USER_APIS).hasAnyRole("ADMIN", "USER")
                         .requestMatchers(ApiPermissions.ADMIN_APIS).hasRole("ADMIN")

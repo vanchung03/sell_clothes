@@ -14,13 +14,13 @@ import lombok.Setter;
 public class OrderItem {
 
     @Id
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     @JsonBackReference
     private Order order;
 
     @Id
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "variant_id", nullable = false)
     @JsonIgnore  // ✅ Ngăn vòng lặp vô hạn
     private ProductVariant variant;
