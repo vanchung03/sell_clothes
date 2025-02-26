@@ -1,7 +1,10 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.BrandDTO;
 import com.example.demo.dto.ProductVariantDTO;
+import com.example.demo.entity.Brand;
 import com.example.demo.entity.ProductVariant;
+import com.example.demo.mapper.BrandMapper;
 import com.example.demo.mapper.ProductVariantMapper;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.ProductVariantRepository;
@@ -18,9 +21,19 @@ public class ProductVariantService {
 
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private BrandMapper brandMapper;
 
     @Autowired
     private ProductVariantMapper productVariantMapper;
+
+    public BrandDTO getBrandByVariantId(Long variantId) {
+        Brand brand = productVariantRepository.findBrandByVariantId(variantId);
+        if (brand == null) {
+            throw new RuntimeException("Không tìm thấy thương hiệu cho biến thể sản phẩm!");
+        }
+        return brandMapper.toDTO(brand);
+    }
 
     // Lấy tất cả các biến thể của sản phẩm theo productId
     public List<ProductVariantDTO> getAllVariantsByProductId(Long productId) {

@@ -1,6 +1,8 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.BrandDTO;
 import com.example.demo.dto.ProductVariantDTO;
+import com.example.demo.service.BrandService;
 import com.example.demo.service.ProductVariantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,13 +16,24 @@ public class ProductVariantController {
 
     @Autowired
     private ProductVariantService productVariantService;
+    @Autowired
+    private BrandService brandService;
+
+    /**
+     * 🏷 API: Lấy brand từ variantId
+     */
+    @GetMapping("/{variantId}/brand")
+    public ResponseEntity<BrandDTO> getBrandByVariant(@PathVariable Long variantId) {
+        BrandDTO brand = productVariantService.getBrandByVariantId(variantId);
+        return ResponseEntity.ok(brand);
+    }
 
     // Lấy tất cả biến thể sản phẩm theo productId
     @GetMapping("/{productId}")
     public List<ProductVariantDTO> getAllVariantsByProductId(@PathVariable Long productId) {
         return productVariantService.getAllVariantsByProductId(productId);
     }
-    // ✅ Lấy thông tin chi tiết của một biến thể sản phẩm theo variantId
+    //  Lấy thông tin chi tiết của một biến thể sản phẩm theo variantId
     @GetMapping("/variant/{variantId}")
     public ResponseEntity<ProductVariantDTO> getVariantById(@PathVariable Long variantId) {
         return ResponseEntity.ok(productVariantService.getVariantById(variantId));

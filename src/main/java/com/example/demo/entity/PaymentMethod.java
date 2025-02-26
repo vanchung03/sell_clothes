@@ -28,5 +28,4 @@ public class PaymentMethod {
     @Column(name = "updated_at", nullable = false)
     private LocalDate updatedAt = LocalDate.now();
 
-
 }

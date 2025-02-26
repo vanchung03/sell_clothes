@@ -21,7 +21,7 @@ public class CartController {
     }
 
     @PostMapping("/{userId}")
-    public ResponseEntity<CartDTO> addItem(@PathVariable Long userId, @RequestBody CartItemDTO cartItemDTO) {
+    public ResponseEntity<CartDTO> addCartItem(@PathVariable Long userId, @RequestBody CartItemDTO cartItemDTO) {
         return ResponseEntity.ok(cartService.addItemToCart(userId, cartItemDTO));
     }
     // ✅ Thêm hoặc cập nhật số lượng sản phẩm trong giỏ hàng

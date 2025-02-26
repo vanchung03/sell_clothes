@@ -2,8 +2,10 @@ package com.example.demo.service;
 
 import com.example.demo.dto.BrandDTO;
 import com.example.demo.entity.Brand;
+import com.example.demo.entity.ProductVariant;
 import com.example.demo.mapper.BrandMapper;
 import com.example.demo.repository.BrandRepository;
+import com.example.demo.repository.ProductVariantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +16,19 @@ public class BrandService {
 
     @Autowired
     private BrandRepository brandRepository;
-
-
+    @Autowired
+    private ProductVariantRepository productVariantRepository;
     @Autowired
     private BrandMapper brandMapper;
 
-
+    /**
+     * ✅ Lấy brand từ variantId
+     */
+    public BrandDTO getBrandByVariantId(Long variantId) {
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy biến thể sản phẩm"));
+        return brandMapper.toDTO(variant.getProduct().getBrand());
+    }
     // Lấy danh sách Brand
     public List<BrandDTO> getAllBrands() {
         List<Brand> brands = brandRepository.findAll();

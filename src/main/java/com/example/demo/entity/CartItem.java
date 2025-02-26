@@ -25,6 +25,6 @@ public class CartItem {
     private int quantity;
     private double unitPrice;
     private double totalPrice;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }
