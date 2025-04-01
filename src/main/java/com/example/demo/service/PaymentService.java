@@ -136,6 +136,7 @@ public class PaymentService {
         if ("00".equals(transactionStatus)) {
             // ✅ Nếu thanh toán thành công -> Cập nhật thành COMPLETED
             payment.setPaymentStatus(PaymentStatus.COMPLETED);
+
             if (transactionCode != null && !transactionCode.isEmpty()) {
                 payment.setTransactionCode(transactionCode);
             }

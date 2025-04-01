@@ -3,14 +3,13 @@ package com.example.demo.controller;
 import com.example.demo.dto.PaymentDTO;
 import com.example.demo.service.PaymentService;
 import com.example.demo.service.PayPalService;
+import com.paypal.api.payments.Payment;
 import com.paypal.api.payments.RelatedResources;
 import com.paypal.api.payments.Sale;
 import com.paypal.api.payments.Transaction;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import com.paypal.api.payments.Payment;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.List;
 import java.util.Map;
@@ -37,125 +36,116 @@ public class PaymentController {
     }
 
     /**
-     * ✅ API Callback tự động cho VNPay & PayPal
+     * ✅ API Callback từ PayPal & VNPay
      */
     @GetMapping("/callback")
-    public ResponseEntity<String> handleVNPayCallback(@RequestParam Map<String, String> params) {
-        if (!params.containsKey("method")) {
-            return ResponseEntity.badRequest().body("Thiếu tham số phương thức thanh toán!");
-        }
-
+    public RedirectView handlePaymentCallback(@RequestParam Map<String, String> params) {
         String method = params.get("method");
+        String redirectUrl = "http://localhost:4200/payment-result?status=failed"; // Mặc định thanh toán thất bại
 
-        // ✅ Xử lý PayPal
-        if ("PAYPAL".equalsIgnoreCase(method)) {
-            if (!params.containsKey("paymentId") || !params.containsKey("PayerID")) {
-                return ResponseEntity.badRequest().body("Dữ liệu callback PayPal không hợp lệ! Thiếu paymentId hoặc PayerID.");
-            }
+        try {
+            if ("PAYPAL".equalsIgnoreCase(method)) {
+                if (!params.containsKey("paymentId") || !params.containsKey("PayerID")) {
+                    return new RedirectView("http://localhost:4200/payment-result?status=failed");
+                }
 
-            String paymentId = params.get("paymentId");
-            String payerId = params.get("PayerID");
+                String paymentId = params.get("paymentId");
+                String payerId = params.get("PayerID");
 
-            try {
                 Payment payment = payPalService.executePayment(paymentId, payerId);
+                String orderIdStr = extractOrderIdFromPayment(payment);
 
-                // ✅ Ghi log toàn bộ response từ PayPal để kiểm tra
-                System.out.println("🔍 PayPal Payment Response: " + payment.toJSON());
-
-                // ✅ Lấy Order ID từ PayPal transaction
-                String orderIdStr = null;
-
-                // 🛠 Cách 1: Lấy từ InvoiceNumber (ưu tiên nếu có)
-                for (Transaction transaction : payment.getTransactions()) {
-                    if (transaction.getInvoiceNumber() != null && !transaction.getInvoiceNumber().isEmpty()) {
-                        orderIdStr = transaction.getInvoiceNumber();
-                        break;
-                    }
-                }
-
-                // 🛠 Cách 2: Lấy từ Custom Field (nếu có)
                 if (orderIdStr == null || orderIdStr.isEmpty()) {
-                    orderIdStr = payment.getTransactions().get(0).getCustom();
+                    return new RedirectView("http://localhost:4200/payment-result?status=failed");
                 }
 
-                // 🛠 Cách 3: Lấy từ Description (nếu có)
-                if (orderIdStr == null || orderIdStr.isEmpty()) {
-                    String description = payment.getTransactions().get(0).getDescription();
-                    if (description != null && description.matches(".*\\d+.*")) {
-                        orderIdStr = description.replaceAll("\\D+", ""); // Loại bỏ ký tự không phải số
-                    }
-                }
-
-                // 🛠 Cách 4: Lấy từ RelatedResources → Sale → ParentPayment (KHÔNG phải Order ID)
-                if (orderIdStr == null || orderIdStr.isEmpty()) {
-                    List<RelatedResources> relatedResources = payment.getTransactions().get(0).getRelatedResources();
-                    if (!relatedResources.isEmpty()) {
-                        Sale sale = relatedResources.get(0).getSale();
-                        if (sale != null) {
-                            orderIdStr = sale.getParentPayment(); // ❌ Không phải Order ID, chỉ để debug
-                            System.err.println("⚠️ Chú ý: `parent_payment` là Payment ID, không phải Order ID!");
-                        }
-                    }
-                }
-
-                // ✅ Nếu vẫn không có Order ID, báo lỗi
-                if (orderIdStr == null || orderIdStr.isEmpty()) {
-                    System.err.println("⚠️ Không lấy được Order ID từ PayPal! Kiểm tra response.");
-                    return ResponseEntity.status(500).body("Không lấy được Order ID từ PayPal!");
-                }
-
-                // ✅ Chỉ lấy số từ Order ID
-                orderIdStr = orderIdStr.replaceAll("\\D+", "");
                 Long orderId = Long.parseLong(orderIdStr);
+                paymentService.updatePaymentStatusForPayPal(orderId, true, paymentId);
+                redirectUrl = "http://localhost:4200/payment-result?status=success";
+            } else if ("VNPAY".equalsIgnoreCase(method)) {
+                String orderInfo = params.get("vnp_OrderInfo"); // Order ID
+                String transactionStatus = params.get("vnp_TransactionStatus");
+                String transactionCode = params.get("vnp_TransactionNo");
 
-                return ResponseEntity.ok(paymentService.updatePaymentStatusForPayPal(orderId, true, paymentId));
-            } catch (Exception e) {
-                System.err.println("❌ Lỗi xử lý callback PayPal: " + e.getMessage());
-                return ResponseEntity.status(500).body("Lỗi xử lý thanh toán PayPal!");
+                if (orderInfo != null && transactionStatus != null) {
+                    Long orderId = Long.parseLong(orderInfo.replaceAll("[^0-9]", "")); // Lọc ký tự số
+                    paymentService.updatePaymentStatus(orderId, transactionStatus, transactionCode);
+
+                    if ("00".equals(transactionStatus)) {
+                        redirectUrl = "http://localhost:4200/payment-result?status=success";
+                    } else {
+                        redirectUrl = "http://localhost:4200/payment-result?status=failed";
+                    }
+                }
             }
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi xử lý callback: " + e.getMessage());
         }
 
-
-        // Xử lý VNPay
-        if ("VNPAY".equalsIgnoreCase(method)) {
-            String orderInfo = params.get("vnp_OrderInfo"); // Order ID
-            String transactionStatus = params.get("vnp_TransactionStatus");
-            String transactionCode = params.get("vnp_TransactionNo");
-
-            if (orderInfo == null || transactionStatus == null) {
-                return ResponseEntity.badRequest().body("Dữ liệu callback không hợp lệ!");
-            }
-
-            Long orderId = Long.parseLong(orderInfo.replaceAll("[^0-9]", "")); // Lọc ký tự số
-            String result = paymentService.updatePaymentStatus(orderId, transactionStatus, transactionCode);
-            return ResponseEntity.ok(result);
-        }
-
-        return ResponseEntity.badRequest().body("Phương thức thanh toán không hợp lệ!");
+        return new RedirectView(redirectUrl);
     }
-
 
     /**
      * ✅ API Hủy Thanh Toán PayPal
      */
     @GetMapping("/paypal-cancel")
-    public ResponseEntity<String> handlePayPalCancel(@RequestParam String orderId) {
-        try {
-            Long parsedOrderId = Long.parseLong(orderId);
-            return ResponseEntity.ok(paymentService.updatePaymentStatusForPayPal(parsedOrderId, false, null));
-        } catch (Exception e) {
-            return ResponseEntity.status(400).body("Lỗi xử lý hủy thanh toán PayPal");
-        }
+    public RedirectView handlePayPalCancel(@RequestParam(required = false) String token) {
+        return new RedirectView("http://localhost:4200/payment-result?status=cancel");
     }
-    // ✅ API: Lấy danh sách tất cả giao dịch thanh toán
+
+    /**
+     * ✅ API: Lấy danh sách tất cả giao dịch thanh toán
+     */
     @GetMapping
     public ResponseEntity<List<PaymentDTO>> getAllPayments() {
         return ResponseEntity.ok(paymentService.getAllPayments());
     }
 
-    // ✅ API: Lấy thông tin thanh toán theo `orderId`
+    /**
+     * ✅ API: Lấy thông tin thanh toán theo `orderId`
+     */
     @GetMapping("/order/{orderId}")
     public ResponseEntity<PaymentDTO> getPaymentByOrderId(@PathVariable Long orderId) {
         return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId));
+    }
+
+    /**
+     * ✅ Hàm trợ giúp để lấy Order ID từ phản hồi của PayPal
+     */
+    private String extractOrderIdFromPayment(Payment payment) {
+        String orderIdStr = null;
+
+        // 🛠 Cách 1: Lấy từ InvoiceNumber (ưu tiên nếu có)
+        for (Transaction transaction : payment.getTransactions()) {
+            if (transaction.getInvoiceNumber() != null && !transaction.getInvoiceNumber().isEmpty()) {
+                orderIdStr = transaction.getInvoiceNumber();
+                break;
+            }
+        }
+
+        // 🛠 Cách 2: Lấy từ Custom Field (nếu có)
+        if (orderIdStr == null || orderIdStr.isEmpty()) {
+            orderIdStr = payment.getTransactions().get(0).getCustom();
+        }
+
+        // 🛠 Cách 3: Lấy từ Description (nếu có)
+        if (orderIdStr == null || orderIdStr.isEmpty()) {
+            String description = payment.getTransactions().get(0).getDescription();
+            if (description != null && description.matches(".*\\d+.*")) {
+                orderIdStr = description.replaceAll("\\D+", ""); // Loại bỏ ký tự không phải số
+            }
+        }
+
+        // 🛠 Cách 4: Lấy từ RelatedResources → Sale → ParentPayment (KHÔNG phải Order ID)
+        if (orderIdStr == null || orderIdStr.isEmpty()) {
+            List<RelatedResources> relatedResources = payment.getTransactions().get(0).getRelatedResources();
+            if (!relatedResources.isEmpty()) {
+                Sale sale = relatedResources.get(0).getSale();
+                if (sale != null) {
+                    orderIdStr = sale.getParentPayment(); // ❌ Không phải Order ID, chỉ để debug
+                }
+            }
+        }
+        return orderIdStr;
     }
 }

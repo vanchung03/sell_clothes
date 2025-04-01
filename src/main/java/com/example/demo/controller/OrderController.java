@@ -2,8 +2,11 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.OrderDTO;
 import com.example.demo.entity.Order;
+import com.example.demo.entity.PaymentHistory;
 import com.example.demo.enums.OrderStatus;
+import com.example.demo.service.OrderMailService;
 import com.example.demo.service.OrderService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +16,8 @@ import java.util.List;
 @RequestMapping("/api/v1/orders")
 public class OrderController {
     private final OrderService orderService;
+    @Autowired
+    private OrderMailService orderMailService;
 
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
@@ -20,9 +25,24 @@ public class OrderController {
 
     // ✅ API Checkout (Chuyển giỏ hàng thành đơn hàng)
     @PostMapping("/{userId}/checkout")
-    public ResponseEntity<OrderDTO> checkoutCart(@PathVariable Long userId, @RequestParam Long addressId) {
-        return ResponseEntity.ok(orderService.checkout(userId, addressId));
+    public ResponseEntity<OrderDTO> checkoutCart(
+            @PathVariable Long userId,
+            @RequestParam Long addressId,
+            @RequestParam Long shipMethodId,
+            @RequestParam(required = false) String voucherCode // ✅ Thêm voucherCode vào query params
+    ) {
+        return ResponseEntity.ok(orderService.checkout(userId, addressId, shipMethodId, voucherCode));
     }
+
+    @PostMapping("/{orderId}/sendMail")
+    public ResponseEntity<String> sendOrderConfirmationMail(@PathVariable Long orderId) {
+        // Lấy Order entity với thông tin liên quan đã được nạp (sử dụng fetch join)
+        Order order = orderService.getOrderEntityById(orderId);
+        // Gửi email xác nhận
+        orderMailService.sendOrderConfirmationEmail(order);
+        return ResponseEntity.ok("Email đã được gửi thành công!");
+    }
+
 
     // ✅ 2. Lấy danh sách đơn hàng của một người dùng
     @GetMapping("/user/{userId}")
@@ -47,7 +67,6 @@ public class OrderController {
         }
     }
 
-
     // ✅ 5. Xóa đơn hàng
     @DeleteMapping("/{orderId}")
     public ResponseEntity<String> deleteOrder(@PathVariable Long orderId) {
@@ -59,6 +78,6 @@ public class OrderController {
     public ResponseEntity<List<OrderDTO>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());
     }
-    // ✅ API lấy danh sách đơn hàng
+
 
 }

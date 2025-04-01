@@ -35,4 +35,8 @@ public class CartController {
         cartService.removeItemFromCart(cartItemId);
         return ResponseEntity.ok("Đã xóa sản phẩm khỏi giỏ hàng");
     }
+    @GetMapping("/count/{userId}")
+    public int getCartItemCount(@PathVariable Long userId) {
+        return cartService.getCartItemCountByUserId(userId);
+    }
 }

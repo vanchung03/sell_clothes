@@ -47,9 +47,17 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
-    // Tìm kiếm Category theo tên
-    public List<CategoryDTO> getCategoryByName(String name) {
-        List<Category> categories = categoryRepository.findByName(name);
+    // Tìm kiếm danh mục theo từ khóa trong name
+    public List<CategoryDTO> searchCategoryByName(String keyword) {
+        List<Category> categories = categoryRepository.searchByName(keyword);
+        return categories.stream()
+                .map(categoryMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Tìm kiếm danh mục chứa "nam" hoặc "nữ"
+    public List<CategoryDTO> searchCategoryByGender() {
+        List<Category> categories = categoryRepository.searchByGenderKeywords();
         return categories.stream()
                 .map(categoryMapper::toDTO)
                 .collect(Collectors.toList());

@@ -1,14 +1,18 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.OrderDTO;
+import com.example.demo.dto.PaymentHistoryDTO;
 import com.example.demo.entity.*;
+import com.example.demo.enums.DiscountType;
 import com.example.demo.enums.OrderStatus;
 import com.example.demo.mapper.OrderMapper;
 import com.example.demo.repository.*;
 import jakarta.transaction.Transactional;
 import org.hibernate.Hibernate;
+import org.springframework.security.access.method.P;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,21 +25,36 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final UserAddressRepository userAddressRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final PaymentRepository paymentRepository;
+    private final PaymentHistoryRepository paymentHistoryRepository;
+    private final ShipMethodRepository shipMethodRepository;
+    private final VoucherRepository voucherRepository;
+
 
     public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
                         CartRepository cartRepository, CartItemRepository cartItemRepository,
-                        UserAddressRepository userAddressRepository , ProductVariantRepository productVariantRepository) {
+                        UserAddressRepository userAddressRepository , ProductVariantRepository productVariantRepository,
+                        PaymentHistoryRepository paymentHistoryRepository,
+                        PaymentRepository paymentRepository,
+                        ShipMethodRepository shipMethodRepository,
+                        VoucherRepository voucherRepository
+                        ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.userAddressRepository = userAddressRepository;
         this.productVariantRepository = productVariantRepository;
+        this.paymentHistoryRepository = paymentHistoryRepository;
+        this.paymentRepository = paymentRepository;
+        this.shipMethodRepository = shipMethodRepository;
+        this.voucherRepository = voucherRepository;
     }
 
     // ✅ 1. Tạo đơn hàng từ giỏ hàng
+
     @Transactional
-    public OrderDTO checkout(Long userId, Long addressId) {
+    public OrderDTO checkout(Long userId, Long addressId, Long shipMethodId, String voucherCode) {
         Cart cart = cartRepository.findByUserUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Giỏ hàng trống!"));
 
@@ -47,13 +66,63 @@ public class OrderService {
         UserAddress address = userAddressRepository.findById(addressId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy địa chỉ"));
 
+        ShipMethod shipMethod = shipMethodRepository.findById(shipMethodId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phương thức vận chuyển"));
+
+        // ✅ Tính tổng giá trị đơn hàng trước khi áp dụng voucher
+        double totalAmount = cart.getCartItems().stream()
+                .mapToDouble(CartItem::getTotalPrice)
+                .sum() + shipMethod.getShippingFee();
+
+        // ✅ Kiểm tra và áp dụng voucher (nếu có)
+        double discount = 0.0;
+        if (voucherCode != null && !voucherCode.trim().isEmpty()) {
+            Voucher voucher = voucherRepository.findByVoucherCode(voucherCode)
+                    .orElseThrow(() -> new RuntimeException("Mã voucher không hợp lệ"));
+
+            if (voucher.getExpiryDate().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Mã voucher đã hết hạn");
+            }
+
+            if (!voucher.isActive()) {
+                throw new RuntimeException("Mã voucher không còn hoạt động");
+            }
+            if (voucher.getQuantity() <= 0) {
+                throw new RuntimeException("Mã voucher đã hết số lượng sử dụng");
+            }
+
+
+            // ✅ Tính giảm giá
+            if (voucher.getDiscountType() == DiscountType.FIXED_AMOUNT) {
+                discount = voucher.getDiscountAmount();
+            } else if (voucher.getDiscountType() == DiscountType.PERCENTAGE) {
+                discount = (totalAmount * voucher.getDiscountAmount()) / 100;
+                if (voucher.getMaxDiscount() != null) {
+                    discount = Math.min(discount, voucher.getMaxDiscount()); // ✅ Giới hạn giảm giá tối đa
+                }
+            }
+
+            totalAmount = Math.max(0, totalAmount - discount);
+
+            // ✅ Trừ số lượng của voucher
+            voucher.setQuantity(voucher.getQuantity() - 1);
+            voucherRepository.save(voucher);
+        }
+
         // ✅ Tạo đơn hàng
         Order order = new Order();
         order.setUser(cart.getUser());
         order.setAddress(address);
-        order.setTotalAmount(cart.getCartItems().stream().mapToDouble(CartItem::getTotalPrice).sum());
-        order.setShippingFee(0.0);
+        order.setShipMethod(shipMethod);
+        order.setTotalAmount(totalAmount);
         order.setStatus(OrderStatus.PENDING);
+
+        // ✅ Lưu thông tin voucher vào bảng `Orders`
+        if (voucherCode != null && !voucherCode.trim().isEmpty()) {
+            order.setVoucherCode(voucherCode);
+            order.setDiscountAmount(discount);
+        }
+
         orderRepository.save(order);
 
         // ✅ Chuyển CartItems thành OrderItems & Cập nhật stockQuantity
@@ -91,17 +160,25 @@ public class OrderService {
         order = orderRepository.findById(order.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 
-        return OrderMapper.INSTANCE.toDTO(order);
+        // ✅ Trả về OrderDTO có thông tin voucher
+        OrderDTO orderDTO = OrderMapper.INSTANCE.toDTO(order);
+        if (voucherCode != null && !voucherCode.trim().isEmpty()) {
+            orderDTO.setVoucherCode(voucherCode);
+            orderDTO.setDiscountAmount(discount);
+        }
+
+        return orderDTO;
     }
 
-
-
-
-
     // ✅ 2. Lấy danh sách đơn hàng của người dùng
+    @Transactional
     public List<OrderDTO> getOrdersByUser(Long userId) {
-        return orderRepository.findByUserUserId(userId)
-                .stream()
+        List<Order> orders = orderRepository.findByUserUserId(userId);
+
+        // Ép tải danh sách orderItems trước khi session bị đóng
+        orders.forEach(order -> Hibernate.initialize(order.getOrderItems()));
+
+        return orders.stream()
                 .map(OrderMapper.INSTANCE::toDTO)
                 .collect(Collectors.toList());
     }
@@ -115,6 +192,7 @@ public class OrderService {
         Hibernate.initialize(order.getOrderItems()); // Ép tải orderItems trước khi session đóng
         return OrderMapper.INSTANCE.toDTO(order);
     }
+
 
 
     // ✅ 4. Cập nhật trạng thái đơn hàng
@@ -153,8 +231,10 @@ public class OrderService {
                 .map(OrderMapper.INSTANCE::toDTO)
                 .collect(Collectors.toList());
     }
-
-
-
+    // Lấy Order entity với đầy đủ các thông tin cần thiết dựa trên orderId
+    public Order getOrderEntityById(Long orderId) {
+        return orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+    }
 
 }

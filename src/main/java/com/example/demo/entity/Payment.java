@@ -29,4 +29,5 @@ public class Payment {
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updateAt = LocalDateTime.now();
 }

@@ -127,6 +127,9 @@ public class CartService {
 
         return CartMapper.INSTANCE.toDTO(cart);
     }
+    public int getCartItemCountByUserId(Long userId) {
+        return cartRepository.countCartItemsByUserId(userId);
+    }
 
 
     // ✅ Xóa sản phẩm khỏi giỏ hàng

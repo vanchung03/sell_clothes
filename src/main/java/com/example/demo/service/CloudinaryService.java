@@ -5,7 +5,14 @@ import com.cloudinary.utils.ObjectUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -102,4 +109,45 @@ public class CloudinaryService {
         int questionMarkIndex = url.indexOf('?');
         return (questionMarkIndex != -1) ? url.substring(0, questionMarkIndex) : url;
     }
+
+    public Map<String, String> uploadMultipleFiles(List<MultipartFile> files, String cloudinaryFolder) throws IOException {
+        Map<String, String> uploadedUrls = new HashMap<>();
+
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("Danh sách file trống!");
+        }
+
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                System.out.println("⚠️ Bỏ qua file trống!");
+                continue;
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) continue;
+
+            // ✅ Loại bỏ thư mục, chỉ lấy tên file
+            String cleanFileName = new File(originalFilename).getName();
+
+            // ✅ Chuẩn hóa tên file: chữ thường, thay khoảng trắng thành "_"
+            String sanitizedFileName = cleanFileName.toLowerCase().replaceAll("\\s+", "_");
+
+            try {
+                Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                        "public_id", cloudinaryFolder + "/" + sanitizedFileName.replaceAll("\\.[^.]+$", ""), // Bỏ phần mở rộng để tránh `.webp.webp`
+                        "resource_type", "image"
+                ));
+
+                String imageUrl = (String) uploadResult.get("secure_url");
+                uploadedUrls.put(sanitizedFileName, imageUrl); // Lưu vào Map đúng chuẩn
+
+                System.out.println("Uploaded: " + sanitizedFileName + " -> " + imageUrl);
+            } catch (Exception e) {
+                System.err.println("Lỗi khi upload file: " + sanitizedFileName);
+                e.printStackTrace();
+            }
+        }
+        return uploadedUrls;
+    }
+
 }

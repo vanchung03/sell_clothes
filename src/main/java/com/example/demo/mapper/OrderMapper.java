@@ -16,9 +16,11 @@ public interface OrderMapper {
 
     @Mapping(source = "user.userId", target = "userId")
     @Mapping(source = "address.addressId", target = "addressId")
+    @Mapping(source = "shipMethod.ship_method_id", target = "shipMethodId")
 //    @Mapping(source = "orderItems", target = "orderItems")
-    OrderDTO toDTO(Order entity);
 
+    OrderDTO toDTO(Order entity);
+    @Mapping(source = "shipMethodId", target = "shipMethod.ship_method_id")
     Order toEntity(OrderDTO dto);
 
     @Mapping(source = "order.orderId", target = "orderId")
