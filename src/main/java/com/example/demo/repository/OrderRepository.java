@@ -36,12 +36,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             "AND FUNCTION('MONTH', o.createdAt) = :month")
     List<Order> findOrdersByMonth(@Param("year") int year, @Param("month") int month);
 
-
-
-
-
-
-
     // Tổng doanh thu (chỉ tính các đơn hàng đã hoàn thành)
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = 'COMPLETED'")
     double sumTotalRevenue();

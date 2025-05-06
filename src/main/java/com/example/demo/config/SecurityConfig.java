@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép các request OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Cho phép access cho các endpoint WebSocket
+                        .requestMatchers("/ws-chat/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
 
                         .requestMatchers(ApiPermissions.SHARED_APIS).permitAll()

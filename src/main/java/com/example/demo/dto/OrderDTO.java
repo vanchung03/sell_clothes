@@ -1,6 +1,9 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,4 +19,8 @@ public class OrderDTO {
 
     private String voucherCode; // ✅ Lưu mã giảm giá (nếu có)
     private Double discountAmount; // ✅ Lưu số tiền giảm giá áp dụng
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime createdAt = LocalDateTime.now();
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

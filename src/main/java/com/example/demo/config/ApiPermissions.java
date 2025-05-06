@@ -12,7 +12,10 @@ public class ApiPermissions {
             "/api/v1/orders/**",
             "/api/vouchers/**",
             "/api/v1/review-replies/**",
-            "/api/v1/reviews/**"
+            "/api/v1/reviews/**",
+            "/api/gpt/**",
+            "/api/chat/**",
+            "/app/chat.sendMessage/**"
 
     };
     public static final String[] ADMIN_APIS = {
